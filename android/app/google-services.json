@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "905315365131",
+    "project_id": "chatchawal-anime-diary-006",
+    "storage_bucket": "chatchawal-anime-diary-006.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:905315365131:android:14aa73286918aa5d9ab20e",
+        "android_client_info": {
+          "package_name": "com.example.chatchawal_anime_diary_006"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJ_5X3l1BS5cw6Xd_a07zTPrRhjbrYwsw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
