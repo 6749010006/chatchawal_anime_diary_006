@@ -1,3 +1,4 @@
+//จัดทำโดยชัชวาลย์ เมฆารักษ์กุล   รหัสนศ.6749010006
 import 'package:chatchawal_anime_diary_006/service/database.dart';
 import 'package:flutter/material.dart';
 import 'package:random_string/random_string.dart';
@@ -281,7 +282,8 @@ class _AddAnimeState extends State<AddAnime> {
                       seasoncontroller.clear();
                       imageUrlController.clear();
                       setState(() => rating = 0.0);
-                      // กลับไปหน้า Home และบอกว่ามีการเพิ่มสำเร็จ
+                      // แสดง SnackBar
+                      // pop กลับไปหน้า Home พร้อมบอกว่าเพิ่มสำเร็จ
                       Navigator.pop(context, true);
                     });
                   }

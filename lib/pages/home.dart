@@ -1,20 +1,71 @@
-import 'package:chatchawal_anime_diary_006/pages/add_anime.dart';
-import 'package:chatchawal_anime_diary_006/service/database.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
+//จัดทำโดยชัชวาลย์ เมฆารักษ์กุล   รหัสนศ.6749010006
 
-///นายชัชวาลย์ เมฆารักษ์กุล รหัสนักศึกษา 6749010006////
-String bgImageUrl = ""; // ✅ เพิ่มตรงนี้
+import 'package:chatchawal_anime_diary_006/pages/add_anime.dart'; //นำเข้าหน้า AddAnime สำหรับเพิ่ม Anime ใหม่
+import 'package:chatchawal_anime_diary_006/service/database.dart'; //นำเข้าคลาส DatabaseMethods สำหรับจัดการกับ Firestore
+import 'package:cloud_firestore/cloud_firestore.dart'; //นำเข้า Firestore ของ Google Firebase
+import 'package:flutter/material.dart'; //นำเข้า Flutter Material สำหรับ Widget UI ต่าง ๆ
 
+String bgImageUrl = "";
+//ตัวแปรเก็บ URL ของภาพพื้นหลังของหน้าหลัก
+//จะเปลี่ยนตาม Anime ที่เลือกใน PageView
+
+// ----------------- สำหรับครึ่งหัวใจ -----------------
+class _HalfClipper extends CustomClipper<Rect> {
+  @override
+  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width / 2, size.height);
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Rect> oldClipper) => false;
+}
+
+// ----------------- หัวใจเพชรแดง -----------------
+class DiamondHeart extends StatelessWidget {
+  final double size;
+  const DiamondHeart({super.key, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      shaderCallback: (bounds) {
+        return RadialGradient(
+          colors: [
+            Colors.redAccent.shade400,
+            Colors.red.shade900,
+            Colors.redAccent.shade700,
+          ],
+          center: Alignment.topLeft,
+          radius: 1.2,
+          tileMode: TileMode.mirror,
+        ).createShader(bounds);
+      },
+      child: Icon(
+        Icons.favorite,
+        color: Colors.white,
+        size: size,
+        shadows: const [
+          Shadow(blurRadius: 12, color: Colors.redAccent, offset: Offset(0, 0)),
+          Shadow(blurRadius: 24, color: Colors.red, offset: Offset(0, 0)),
+        ],
+      ),
+    );
+  }
+}
+//---------------------------------------------------
+
+// ----------------- หน้า Home -----------------
 class Home extends StatefulWidget {
   const Home({super.key});
 
   @override
   State<Home> createState() => _HomeState();
 }
+// ---------------------------------------------
 
+// ------State ของ Home ---------------
 class _HomeState extends State<Home> {
   Stream<QuerySnapshot>? animeStream;
+  PageController pageController = PageController(viewportFraction: 0.85);
+  int lastIndex = 0;
 
   @override
   void initState() {
@@ -22,20 +73,24 @@ class _HomeState extends State<Home> {
     loadAnimeStream();
   }
 
+  // ---------- โหลด Stream
   void loadAnimeStream() {
     animeStream = FirebaseFirestore.instance.collection("Anime").snapshots();
   }
 
+  // ------แสดงรายการ Anime
   Widget showAnimeList() {
     return StreamBuilder<QuerySnapshot>(
       stream: animeStream,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (!snapshot.hasData)
           return const Center(child: CircularProgressIndicator());
-        }
+
+        // อัพเดต lastIndex ทุกครั้ง
+        lastIndex = snapshot.data!.docs.length - 1;
 
         return PageView.builder(
-          controller: PageController(viewportFraction: 0.85),
+          controller: pageController,
           itemCount: snapshot.data!.docs.length,
           onPageChanged: (index) {
             setState(() {
@@ -45,6 +100,8 @@ class _HomeState extends State<Home> {
                   "";
             });
           },
+
+          // ------ Card ของแต่ละ Anime
           itemBuilder: (context, index) {
             DocumentSnapshot ds = snapshot.data!.docs[index];
             final data = ds.data() as Map<String, dynamic>;
@@ -83,6 +140,7 @@ class _HomeState extends State<Home> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      //แสดงปุ่มแก้ไขและลบ
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -114,12 +172,14 @@ class _HomeState extends State<Home> {
                             },
                             child: const Icon(
                               Icons.delete,
-                              color: Color.fromARGB(255, 255, 255, 255),
+                              color: Colors.white,
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
+
+                      //แสดงรูปภาพ, ชื่อ, Episode, Season และ Rating
                       if (imageUrl.isNotEmpty)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
@@ -196,7 +256,6 @@ class _HomeState extends State<Home> {
                         ],
                       ),
                       const SizedBox(height: 5),
-                      // ----------------- แสดงหัวใจ -----------------
                       Row(
                         children: List.generate(5, (i) {
                           double heartValue = i + 1;
@@ -236,6 +295,7 @@ class _HomeState extends State<Home> {
     );
   }
 
+  // -----------------Dialog แก้ไข Anime-----------------
   void showEditDialog(DocumentSnapshot ds) {
     final data = ds.data() as Map<String, dynamic>;
     final titleController = TextEditingController(
@@ -257,49 +317,14 @@ class _HomeState extends State<Home> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          elevation: 10,
           backgroundColor: Colors.transparent,
           child: StatefulBuilder(
             builder: (context, setState) {
-              var elevatedButton = ElevatedButton(
-                onPressed: () async {
-                  await FirebaseFirestore.instance
-                      .collection("Anime")
-                      .doc(ds.id)
-                      .update({
-                        "Anime Title": titleController.text,
-                        "Episode": episodeController.text,
-                        "Season": seasonController.text,
-                        "Rating": rating,
-                        "ImageURL": imageUrlController.text,
-                      });
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Updated successfully!"),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 30,
-                    vertical: 12,
-                  ),
-                ),
-                child: const Text("Save"),
-              );
               return Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.white, Colors.grey.shade200],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
@@ -420,9 +445,9 @@ class _HomeState extends State<Home> {
                           Row(
                             children: List.generate(5, (i) {
                               double heartValue = i + 1;
-                              if (rating >= heartValue) {
+                              if (rating >= heartValue)
                                 return const DiamondHeart(size: 28);
-                              } else if (rating + 0.5 >= heartValue) {
+                              if (rating + 0.5 >= heartValue)
                                 return Stack(
                                   children: [
                                     Icon(
@@ -436,13 +461,11 @@ class _HomeState extends State<Home> {
                                     ),
                                   ],
                                 );
-                              } else {
-                                return Icon(
-                                  Icons.favorite_border,
-                                  color: Colors.red.shade200,
-                                  size: 28,
-                                );
-                              }
+                              return Icon(
+                                Icons.favorite_border,
+                                color: Colors.red.shade200,
+                                size: 28,
+                              );
                             }),
                           ),
                         ],
@@ -465,7 +488,38 @@ class _HomeState extends State<Home> {
                             ),
                             child: const Text("Cancel"),
                           ),
-                          elevatedButton,
+                          ElevatedButton(
+                            onPressed: () async {
+                              await FirebaseFirestore.instance
+                                  .collection("Anime")
+                                  .doc(ds.id)
+                                  .update({
+                                    "Anime Title": titleController.text,
+                                    "Episode": episodeController.text,
+                                    "Season": seasonController.text,
+                                    "Rating": rating,
+                                    "ImageURL": imageUrlController.text,
+                                  });
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Updated successfully!"),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 30,
+                                vertical: 12,
+                              ),
+                            ),
+                            child: const Text("Save"),
+                          ),
                         ],
                       ),
                     ],
@@ -484,11 +538,31 @@ class _HomeState extends State<Home> {
     return Scaffold(
       backgroundColor: Colors.black,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+
+      //FloatingActionButton เพิ่ม Anime//////////////////////////
       floatingActionButton: GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AddAnime()),
-        ),
+        onTap: () async {
+          bool? added = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddAnime()),
+          );
+
+          if (added != null && added) {
+            // เลื่อนไปหลังสุดอัตโนมัติ//////////////////////////////////
+            pageController.animateToPage(
+              lastIndex,
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOut,
+            );
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Added successfully!"),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18),
           decoration: BoxDecoration(
@@ -526,6 +600,7 @@ class _HomeState extends State<Home> {
       ),
       body: Stack(
         children: [
+          //Background/////////////////////////////////////////////////////////////
           if (bgImageUrl.isNotEmpty)
             SizedBox.expand(
               child: Image.network(bgImageUrl, fit: BoxFit.cover),
@@ -576,51 +651,6 @@ class _HomeState extends State<Home> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ----------------- สำหรับครึ่งหัวใจ -----------------
-class _HalfClipper extends CustomClipper<Rect> {
-  @override
-  Rect getClip(Size size) {
-    return Rect.fromLTWH(0, 0, size.width / 2, size.height);
-  }
-
-  @override
-  bool shouldReclip(covariant CustomClipper<Rect> oldClipper) => false;
-}
-
-// ----------------- หัวใจเพชรแดง -----------------
-// ----------------- หัวใจเพชรแดง -----------------
-class DiamondHeart extends StatelessWidget {
-  final double size;
-  const DiamondHeart({super.key, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return ShaderMask(
-      shaderCallback: (bounds) {
-        return RadialGradient(
-          colors: [
-            Colors.redAccent.shade400,
-            Colors.red.shade900,
-            Colors.redAccent.shade700,
-          ],
-          center: Alignment.topLeft,
-          radius: 1.2,
-          tileMode: TileMode.mirror,
-        ).createShader(bounds);
-      },
-      child: Icon(
-        Icons.favorite,
-        color: Colors.white,
-        size: size,
-        shadows: const [
-          Shadow(blurRadius: 12, color: Colors.redAccent, offset: Offset(0, 0)),
-          Shadow(blurRadius: 24, color: Colors.red, offset: Offset(0, 0)),
         ],
       ),
     );
