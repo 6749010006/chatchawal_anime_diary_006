@@ -107,7 +107,13 @@ class _HomeState extends State<Home> {
             final data = ds.data() as Map<String, dynamic>;
             double rating = (data["Rating"] ?? 0.0).toDouble();
             String imageUrl = data["ImageURL"] ?? "";
-
+            if (index == 0 && bgImageUrl.isEmpty && imageUrl.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                setState(() {
+                  bgImageUrl = imageUrl;
+                });
+              });
+            }
             return Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 8.0,
@@ -155,6 +161,25 @@ class _HomeState extends State<Home> {
                             onTap: () async {
                               try {
                                 await DatabaseMethods().deleteAnimeData(ds.id);
+
+                                // 🔴 รีเซ็ตภาพ background หลังลบ
+                                if (pageController.hasClients &&
+                                    snapshot.data!.docs.isNotEmpty) {
+                                  int newIndex = pageController.page!
+                                      .round()
+                                      .clamp(0, snapshot.data!.docs.length - 2);
+                                  final newData =
+                                      snapshot.data!.docs[newIndex].data()
+                                          as Map<String, dynamic>;
+                                  setState(() {
+                                    bgImageUrl = newData["ImageURL"] ?? "";
+                                  });
+                                } else {
+                                  setState(() {
+                                    bgImageUrl = ""; // ไม่มีข้อมูลแล้ว
+                                  });
+                                }
+
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text("Deleted successfully!"),
